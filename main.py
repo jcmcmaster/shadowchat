@@ -173,7 +173,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sp.add_argument("--top-k", type=int, default=5)
     sp.add_argument("--analysis", action="store_true", help="Use LLM analysis mode (aggregated reasoning)")
-    sp.add_argument("--llm-provider", default="auto", choices=["auto", "openai", "ollama"], help="LLM provider")
+    sp.add_argument("--llm-provider", default="auto", choices=["auto", "openai"], help="LLM provider")
     sp.add_argument("--llm-model", default=None, help="LLM model name (provider-specific)")
     sp.set_defaults(func=cmd_chat)
 

@@ -73,41 +73,10 @@ class OpenAILLM(LLM):
                     return _call_with_kwargs(include_temp=False, extra_body={"max_completion_tokens": max_tokens}).choices[0].message.content or ""
 
 
-class OllamaLLM(LLM):
-    def __init__(self, model: str, host: str = "http://localhost:11434") -> None:
-        self._model = model
-        self._host = host.rstrip("/")
-        try:
-            import requests  # noqa: F401  # type: ignore
-        except Exception as e:  # pragma: no cover - optional dependency
-            raise RuntimeError("requests package is required for provider=ollama. Install with `pip install requests`.") from e
-
-    def chat(self, messages: List[ChatMessage], max_tokens: int = 512) -> str:
-        import requests  # type: ignore
-
-        payload = {
-            "model": self._model,
-            "messages": [{"role": m.role, "content": m.content} for m in messages],
-            "options": {"num_predict": max_tokens, "temperature": 0.2},
-            "stream": False,
-        }
-        r = requests.post(f"{self._host}/api/chat", json=payload, timeout=600)
-        r.raise_for_status()
-        data = r.json()
-        return data.get("message", {}).get("content", "")
-
-
 def make_llm(provider: str, model: Optional[str] = None) -> LLM:
     provider = (provider or "auto").lower()
-    if provider == "auto":
-        # Prefer OpenAI if key exists
-        if os.environ.get("OPENAI_API_KEY"):
-            return OpenAILLM(model or "gpt-4o-mini")
-        return OllamaLLM(model or "llama3.1:8b-instruct")
-    if provider == "openai":
+    if provider == "auto" or provider == "openai":
         return OpenAILLM(model or "gpt-4o-mini")
-    if provider == "ollama":
-        return OllamaLLM(model or "llama3.1:8b-instruct")
-    raise ValueError(f"Unknown provider: {provider}")
+    raise ValueError(f"Unknown provider: {provider}. Only 'openai' and 'auto' are supported.")
 
 

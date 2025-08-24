@@ -40,7 +40,6 @@ python main.py ask --question "What did they say about X?"
  - Create a `.env` at repo root (not committed) to store secrets like `OPENAI_API_KEY`.
  - Example keys:
    - `OPENAI_API_KEY=sk-...`
-   - `OLLAMA_HOST=http://localhost:11434`
  - PowerShell helper to load `.env` into current session:
    ```powershell
    Get-Content .env | ForEach-Object {
