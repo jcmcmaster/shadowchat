@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 from typing import List
 
+from dotenv import load_dotenv
+
 from yt_audio_ai.downloader import YouTubeAudioDownloader
 from yt_audio_ai.transcriber import Transcriber
 from yt_audio_ai.indexer import Indexer
@@ -188,6 +190,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    # Load environment variables from .env file
+    load_dotenv()
+    
     ensure_dir(DATA_DIR)
     ensure_dir(AUDIO_DIR)
     ensure_dir(TRANSCRIPTS_DIR)
