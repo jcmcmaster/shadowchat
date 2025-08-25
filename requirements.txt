@@ -9,3 +9,4 @@ nvidia-cudnn-cu12
 nvidia-cublas-cu12
 nvidia-cuda-runtime-cu12
 openai
+pyannote.audio

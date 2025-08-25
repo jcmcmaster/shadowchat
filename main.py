@@ -47,6 +47,8 @@ def cmd_transcribe(args: argparse.Namespace) -> None:
         overwrite=args.overwrite,
         archive_existing=args.archive,
         archive_subdir=args.archive_subdir,
+        enable_diarization=args.enable_diarization,
+        diarization_token=args.diarization_token,
     )
     tr.transcribe_many(AUDIO_DIR)
 
@@ -142,6 +144,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--overwrite", action="store_true", help="Re-generate transcripts even if they exist")
     sp.add_argument("--archive", action="store_true", help="When overwriting, move old transcript into archive subdir")
     sp.add_argument("--archive-subdir", default="old", help="Subdirectory under transcripts to place archived files")
+    sp.add_argument("--enable-diarization", action="store_true", help="Enable speaker diarization using pyannote")
+    sp.add_argument("--diarization-token", default=None, help="Hugging Face token for pyannote models (required for some models)")
     sp.set_defaults(func=cmd_transcribe)
 
     sp = sub.add_parser("index", help="Chunk, embed, and index transcripts")
