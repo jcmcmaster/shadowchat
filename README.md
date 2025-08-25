@@ -28,8 +28,8 @@ python main.py download --playlist-url https://www.youtube.com/playlist?list=PLA
 # Transcribe all downloaded audio files
 python main.py transcribe --model-size medium
 
-# Transcribe with speaker diarization (requires Hugging Face token)
-python main.py transcribe --model-size medium --enable-diarization --diarization-token YOUR_HF_TOKEN
+# Transcribe with speaker diarization (requires Hugging Face token in .env)
+python main.py transcribe --model-size medium --enable-diarization
 
 # Index transcripts
 python main.py index --embedding-model sentence-transformers/all-MiniLM-L6-v2
@@ -60,12 +60,12 @@ Speaker diarization identifies different speakers in audio and assigns speaker l
 #### Setup:
 1. Get a Hugging Face token from https://huggingface.co/settings/tokens
 2. Accept the user agreement for the pyannote model at https://huggingface.co/pyannote/speaker-diarization-3.1
-3. Use the token with `--diarization-token` or set `HUGGINGFACE_TOKEN` in your `.env` file
+3. Add `HUGGINGFACE_TOKEN=hf_your-token-here` to your `.env` file
 
 #### Usage:
 ```bash
-# Enable diarization during transcription
-python main.py transcribe --enable-diarization --diarization-token YOUR_HF_TOKEN
+# Enable diarization during transcription (uses HUGGINGFACE_TOKEN from .env)
+python main.py transcribe --enable-diarization
 ```
 
 #### Output Format:
@@ -93,4 +93,4 @@ The speaker field is backward compatible - existing transcripts without speaker 
 - Re-runs skip already-downloaded audio and transcripts when possible.
 - Fully local: no API costs.
 - Speaker diarization adds processing time but provides speaker identification in multi-speaker recordings.
-- Diarization requires a Hugging Face token and internet access during initial model download.
+- Diarization requires a Hugging Face token in your `.env` file and internet access during initial model download.

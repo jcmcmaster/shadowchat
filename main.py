@@ -147,7 +147,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--archive", action="store_true", help="When overwriting, move old transcript into archive subdir")
     sp.add_argument("--archive-subdir", default="old", help="Subdirectory under transcripts to place archived files")
     sp.add_argument("--enable-diarization", action="store_true", help="Enable speaker diarization using pyannote")
-    sp.add_argument("--diarization-token", default=None, help="Hugging Face token for pyannote models (required for some models)")
+    sp.add_argument("--diarization-token", default=None, help="Hugging Face token for pyannote models (optional, prefers HUGGINGFACE_TOKEN env var)")
     sp.set_defaults(func=cmd_transcribe)
 
     sp = sub.add_parser("index", help="Chunk, embed, and index transcripts")

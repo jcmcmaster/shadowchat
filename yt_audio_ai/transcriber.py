@@ -98,10 +98,14 @@ class Transcriber:
         if self.enable_diarization:
             try:
                 from pyannote.audio import Pipeline  # type: ignore
-                if self.diarization_token:
+                
+                # Prefer environment variable, fallback to parameter for backward compatibility
+                token = self.diarization_token or os.getenv('HUGGINGFACE_TOKEN')
+                
+                if token:
                     self.diarization_pipeline = Pipeline.from_pretrained(
                         "pyannote/speaker-diarization-3.1",
-                        use_auth_token=self.diarization_token
+                        use_auth_token=token
                     )
                 else:
                     # Try without token (may work for public models)
@@ -111,7 +115,8 @@ class Transcriber:
                 print(f"[green]Loaded[/green] speaker diarization pipeline")
             except Exception as e:
                 print(f"[yellow]Warning[/yellow] Failed to load diarization pipeline: {e}")
-                print(f"[yellow]Tip[/yellow] You may need to provide a Hugging Face token via --diarization-token")
+                print(f"[yellow]Tip[/yellow] You need to set HUGGINGFACE_TOKEN in your .env file")
+                print(f"[yellow]Tip[/yellow] Get your token from https://huggingface.co/settings/tokens")
                 self.enable_diarization = False
 
     def transcribe_audio_file(self, audio_file: Path) -> Path:
