@@ -10,14 +10,44 @@ from .utils import ensure_dir
 
 
 class YouTubeAudioDownloader:
+    """Downloads audio from YouTube videos and playlists using yt-dlp."""
+    
     def __init__(self, audio_dir: Path) -> None:
+        """Initialize the downloader with an output directory.
+        
+        Args:
+            audio_dir: Directory where downloaded audio files will be saved.
+        """
         self.audio_dir = audio_dir
         ensure_dir(self.audio_dir)
 
     def _already_downloaded(self, video_id: str) -> bool:
+        """Check if a video has already been downloaded.
+        
+        Args:
+            video_id: The YouTube video ID to check.
+            
+        Returns:
+            True if the video's MP3 file already exists.
+        """
         return (self.audio_dir / f"{video_id}.mp3").exists()
 
     def download_many(self, urls: Iterable[str]) -> List[Dict[str, Any]]:
+        """Download audio from multiple YouTube URLs.
+        
+        This method handles both individual videos and playlists. It uses yt-dlp
+        to download the best quality audio, converts it to MP3, and saves metadata.
+        
+        Args:
+            urls: Iterable of YouTube URLs (videos or playlists).
+            
+        Returns:
+            List of dictionaries containing download results, each with keys:
+            - video_id: The YouTube video ID
+            - audio_path: Path to the downloaded MP3 file
+            - info_path: Path to the metadata JSON file
+            - original_url: The original URL that was processed
+        """
         results: List[Dict[str, Any]] = []
         urls = [u.strip() for u in urls if u and u.strip()]
         if not urls:

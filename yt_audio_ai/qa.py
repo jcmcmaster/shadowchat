@@ -12,17 +12,33 @@ from .llm import make_llm, ChatMessage
 
 
 class QAClient:
+    """Client for querying and analyzing indexed transcript data."""
+    
     def __init__(
         self,
         index_dir: Path,
         collection_name: str = "youtube_audio",
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
     ) -> None:
+        """Initialize the QA client with access to an existing ChromaDB collection.
+        
+        Args:
+            index_dir: Directory containing the ChromaDB persistent storage.
+            collection_name: Name of the ChromaDB collection to query.
+            embedding_model: SentenceTransformer model name used for query embeddings.
+        """
         self.client = chromadb.PersistentClient(path=str(index_dir))
         self.collection = self.client.get_collection(collection_name)
         self.encoder = SentenceTransformer(embedding_model)
 
     def ask(self, question: str, top_k: int = 5, story_mode: bool = True) -> None:
+        """Ask a question and display relevant transcript excerpts.
+        
+        Args:
+            question: The question to ask.
+            top_k: Number of most relevant chunks to retrieve.
+            story_mode: If True, sort results chronologically instead of by relevance.
+        """
         qv = self.encoder.encode([question], normalize_embeddings=True)[0].tolist()
         res = self.collection.query(query_embeddings=[qv], n_results=top_k)
         docs: List[str] = res.get("documents", [[]])[0]
@@ -50,6 +66,14 @@ class QAClient:
             print(f"[bold]{i}.[/bold] {title} [{start}-{end}]{timeline_suffix}\n{doc[:400]}…\n{url if url else build_youtube_link(video_id, start)}\n")
 
     def analyze(self, question: str, top_k: int = 12, provider: str = "auto", model: str | None = None) -> None:
+        """Analyze a question using LLM reasoning over relevant transcript excerpts.
+        
+        Args:
+            question: The question to analyze.
+            top_k: Number of most relevant chunks to use as context.
+            provider: LLM provider to use for analysis ('auto' or 'openai').
+            model: Specific model name to use for analysis.
+        """
         qv = self.encoder.encode([question], normalize_embeddings=True)[0].tolist()
         res = self.collection.query(query_embeddings=[qv], n_results=top_k)
         docs: List[str] = res.get("documents", [[]])[0]
