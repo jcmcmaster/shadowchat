@@ -134,7 +134,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("transcribe", help="Transcribe downloaded audio")
     sp.add_argument("--model-size", default="small.en", help="Whisper model size (e.g., small.en, small, medium, large-v3)")
-    sp.add_argument("--device", default="cuda", choices=["cpu", "cuda"], help="Device to run transcription")
+    sp.add_argument("--device", default="cpu", choices=["cpu", "cuda"], help="Device to run transcription")
     sp.add_argument(
         "--compute-type",
         default=None,
