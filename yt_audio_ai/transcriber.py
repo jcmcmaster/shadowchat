@@ -116,12 +116,27 @@ class Transcriber:
                 
                 # Configure device for diarization pipeline to match transcription device
                 try:
-                    diarization_device = torch.device(self.device)
+                    # Check if PyTorch has CUDA support before attempting to use CUDA
+                    if self.device == "cuda":
+                        if not torch.cuda.is_available():
+                            print(f"[yellow]Warning[/yellow] CUDA not available, falling back to CPU for diarization")
+                            diarization_device = torch.device("cpu")
+                        elif torch.version.cuda is None:
+                            print(f"[yellow]Warning[/yellow] PyTorch not compiled with CUDA support")
+                            print(f"[cyan]Info[/cyan] Install PyTorch with CUDA: pip install torch --index-url https://download.pytorch.org/whl/cu121")
+                            diarization_device = torch.device("cpu")
+                        else:
+                            diarization_device = torch.device("cuda")
+                    else:
+                        diarization_device = torch.device(self.device)
+                    
                     self.diarization_pipeline = self.diarization_pipeline.to(diarization_device)
                     print(f"[green]Loaded[/green] speaker diarization pipeline on device: {diarization_device}")
                 except Exception as device_error:
                     print(f"[yellow]Warning[/yellow] Could not move diarization pipeline to {self.device}: {device_error}")
                     print(f"[cyan]Info[/cyan] Diarization will run on default device (usually CPU)")
+                    if self.device == "cuda" and "CUDA" in str(device_error):
+                        print(f"[cyan]Tip[/cyan] Ensure PyTorch with CUDA support is installed: pip install torch --index-url https://download.pytorch.org/whl/cu121")
                     print(f"[green]Loaded[/green] speaker diarization pipeline")
                 
             except Exception as e:

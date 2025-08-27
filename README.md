@@ -12,6 +12,11 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+**Note for GPU acceleration:** The requirements.txt includes PyTorch with CUDA 12.1 support for GPU-accelerated transcription and diarization. If you encounter CUDA compatibility issues or prefer CPU-only operation, you can install the CPU version:
+```
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+```
+
 2) Prepare URLs or playlists
 
 - Put one per line in `urls.txt` (video or playlist URLs are fine). Or use flags.
@@ -61,6 +66,7 @@ Speaker diarization identifies different speakers in audio and assigns speaker l
 1. Get a Hugging Face token from https://huggingface.co/settings/tokens
 2. Accept the user agreement for the pyannote model at https://huggingface.co/pyannote/speaker-diarization-3.1
 3. Add `HUGGINGFACE_TOKEN=hf_your-token-here` to your `.env` file
+4. For GPU acceleration, ensure PyTorch with CUDA support is installed (included in requirements.txt)
 
 #### Usage:
 ```bash
