@@ -118,12 +118,16 @@ class Transcriber:
                 try:
                     # Check if PyTorch has CUDA support before attempting to use CUDA
                     if self.device == "cuda":
-                        if not torch.cuda.is_available():
-                            print(f"[yellow]Warning[/yellow] CUDA not available, falling back to CPU for diarization")
-                            diarization_device = torch.device("cpu")
-                        elif torch.version.cuda is None:
+                        # First check if PyTorch was compiled with CUDA support
+                        if torch.version.cuda is None:
                             print(f"[yellow]Warning[/yellow] PyTorch not compiled with CUDA support")
                             print(f"[cyan]Info[/cyan] Install PyTorch with CUDA: pip install torch --index-url https://download.pytorch.org/whl/cu121")
+                            diarization_device = torch.device("cpu")
+                        elif not torch.cuda.is_available():
+                            # PyTorch has CUDA support but no CUDA devices are available
+                            print(f"[yellow]Warning[/yellow] No CUDA devices available (PyTorch compiled with CUDA {torch.version.cuda})")
+                            print(f"[cyan]Info[/cyan] This may be due to: no GPU present, GPU not CUDA-capable, or drivers not installed")
+                            print(f"[cyan]Info[/cyan] Falling back to CPU for diarization")
                             diarization_device = torch.device("cpu")
                         else:
                             diarization_device = torch.device("cuda")
