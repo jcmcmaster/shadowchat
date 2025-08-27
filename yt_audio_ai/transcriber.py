@@ -98,6 +98,7 @@ class Transcriber:
         if self.enable_diarization:
             try:
                 from pyannote.audio import Pipeline  # type: ignore
+                import torch  # type: ignore
                 
                 # Prefer environment variable, fallback to parameter for backward compatibility
                 token = self.diarization_token or os.getenv('HUGGINGFACE_TOKEN')
@@ -112,7 +113,17 @@ class Transcriber:
                     self.diarization_pipeline = Pipeline.from_pretrained(
                         "pyannote/speaker-diarization-3.1"
                     )
-                print(f"[green]Loaded[/green] speaker diarization pipeline")
+                
+                # Configure device for diarization pipeline to match transcription device
+                try:
+                    diarization_device = torch.device(self.device)
+                    self.diarization_pipeline = self.diarization_pipeline.to(diarization_device)
+                    print(f"[green]Loaded[/green] speaker diarization pipeline on device: {diarization_device}")
+                except Exception as device_error:
+                    print(f"[yellow]Warning[/yellow] Could not move diarization pipeline to {self.device}: {device_error}")
+                    print(f"[cyan]Info[/cyan] Diarization will run on default device (usually CPU)")
+                    print(f"[green]Loaded[/green] speaker diarization pipeline")
+                
             except Exception as e:
                 print(f"[yellow]Warning[/yellow] Failed to load diarization pipeline: {e}")
                 print(f"[yellow]Tip[/yellow] You need to set HUGGINGFACE_TOKEN in your .env file")
