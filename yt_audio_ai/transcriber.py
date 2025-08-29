@@ -27,7 +27,7 @@ class Transcriber:
         self,
         transcripts_dir: Path,
         model_size: str = "medium",
-        device: str = "cuda",
+        device: str = "cpu",
         compute_type: Optional[str] = None,
         beam_size: int = 1,
         overwrite: bool = False,
