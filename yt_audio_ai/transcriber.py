@@ -9,6 +9,10 @@ from tqdm import tqdm
 from datetime import datetime
 import os
 import sys
+import warnings
+
+# Suppress all warnings
+warnings.filterwarnings("ignore")
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -104,15 +108,15 @@ class Transcriber:
                 token = self.diarization_token or os.getenv('HUGGINGFACE_TOKEN')
                 
                 if token:
-                    self.diarization_pipeline = Pipeline.from_pretrained(
-                        "pyannote/speaker-diarization-3.1",
-                        use_auth_token=token
-                    )
-                else:
-                    # Try without token (may work for public models)
-                    self.diarization_pipeline = Pipeline.from_pretrained(
-                        "pyannote/speaker-diarization-3.1"
-                    )
+                    self.diarization_pipeline = Pipeline.from_pretrained(
+                        "pyannote/speaker-diarization-3.1",
+                        use_auth_token=token
+                    )
+                else:
+                    # Try without token (may work for public models)
+                    self.diarization_pipeline = Pipeline.from_pretrained(
+                        "pyannote/speaker-diarization-3.1"
+                    )
                 
                 # Configure device for diarization pipeline to match transcription device
                 try:
@@ -183,8 +187,8 @@ class Transcriber:
         speaker_mapping = {}
         if self.enable_diarization and self.diarization_pipeline:
             try:
-                print(f"[cyan]Running[/cyan] speaker diarization...")
-                diarization = self.diarization_pipeline(str(audio_file))
+                print(f"[cyan]Running[/cyan] speaker diarization...")
+                diarization = self.diarization_pipeline(str(audio_file))
                 
                 # Build speaker mapping for each time segment
                 for turn, _, speaker in diarization.itertracks(yield_label=True):
