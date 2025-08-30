@@ -9,6 +9,10 @@ from tqdm import tqdm
 from datetime import datetime
 import os
 import sys
+import warnings
+
+# Suppress all warnings
+warnings.filterwarnings("ignore")
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -19,7 +23,11 @@ from .utils import ensure_dir, get_video_id_from_audio
 
 
 class Transcriber:
-    """Transcribes audio files to text using the Whisper model via faster-whisper."""
+    """Transcribes audio files to text using the Whisper model via faster-whisper.
+    
+    Supports both basic transcription and advanced speaker diarization for identifying
+    different speakers in audio files.
+    """
     
     def __init__(
         self,
@@ -31,6 +39,8 @@ class Transcriber:
         overwrite: bool = False,
         archive_existing: bool = False,
         archive_subdir: str = "old",
+        enable_diarization: bool = False,
+        diarization_token: Optional[str] = None,
     ) -> None:
         """Initialize the transcriber with specified configuration.
         
@@ -44,6 +54,9 @@ class Transcriber:
             overwrite: Whether to re-generate transcripts even if they exist.
             archive_existing: Whether to archive old transcripts when overwriting.
             archive_subdir: Subdirectory name for archived transcripts.
+            enable_diarization: Whether to enable speaker diarization.
+            diarization_token: Hugging Face token for diarization model access.
+                              If None, will use HUGGINGFACE_TOKEN environment variable.
         """
         self.transcripts_dir = transcripts_dir
         ensure_dir(self.transcripts_dir)
@@ -53,6 +66,9 @@ class Transcriber:
         self.overwrite = overwrite
         self.archive_existing = archive_existing
         self.archive_subdir = archive_subdir
+        self.enable_diarization = enable_diarization
+        self.diarization_token = diarization_token
+        
         # On Windows + CUDA, ensure CUDA/cuDNN DLLs are discoverable
         if os.name == "nt" and self.device == "cuda":
             def _add_dir(path: Path) -> None:
@@ -95,6 +111,7 @@ class Transcriber:
 
             for ns in ("nvidia.cudnn", "nvidia.cublas", "nvidia.cuda_runtime"):
                 _add_from_namespace(ns)
+                
         if compute_type is None:
             self.compute_type = "int8" if device == "cpu" else "float16"
         else:
@@ -103,6 +120,63 @@ class Transcriber:
         # Import after DLL directories are configured on Windows
         from faster_whisper import WhisperModel  # type: ignore
         self.model = WhisperModel(self.model_size, device=self.device, compute_type=self.compute_type)
+        
+        # Initialize speaker diarization if enabled
+        self.diarization_pipeline = None
+        if self.enable_diarization:
+            try:
+                from pyannote.audio import Pipeline  # type: ignore
+                import torch  # type: ignore
+                
+                # Prefer environment variable, fallback to parameter for backward compatibility
+                token = self.diarization_token or os.getenv('HUGGINGFACE_TOKEN')
+                
+                if not token:
+                    print(f"[yellow]Error[/yellow] Hugging Face authentication token is required for speaker diarization.")
+                    print(f"[yellow]Tip[/yellow] Set HUGGINGFACE_TOKEN in your environment or provide it as a parameter.")
+                    print(f"[yellow]Tip[/yellow] Get your token from https://huggingface.co/settings/tokens")
+                    self.enable_diarization = False
+                    return
+
+                self.diarization_pipeline = Pipeline.from_pretrained(
+                    "pyannote/speaker-diarization-3.1",
+                    use_auth_token=token
+                )
+                
+                # Configure device for diarization pipeline to match transcription device
+                try:
+                    # Check if PyTorch has CUDA support before attempting to use CUDA
+                    if self.device == "cuda":
+                        # First check if PyTorch was compiled with CUDA support
+                        if torch.version.cuda is None:
+                            print(f"[yellow]Warning[/yellow] PyTorch not compiled with CUDA support")
+                            print(f"[cyan]Info[/cyan] Install PyTorch with CUDA: pip install torch --index-url https://download.pytorch.org/whl/cu121")
+                            diarization_device = torch.device("cpu")
+                        elif not torch.cuda.is_available():
+                            # PyTorch has CUDA support but no CUDA devices are available
+                            print(f"[yellow]Warning[/yellow] No CUDA devices available (PyTorch compiled with CUDA {torch.version.cuda})")
+                            print(f"[cyan]Info[/cyan] This may be due to: no GPU present, GPU not CUDA-capable, or drivers not installed")
+                            print(f"[cyan]Info[/cyan] Falling back to CPU for diarization")
+                            diarization_device = torch.device("cpu")
+                        else:
+                            diarization_device = torch.device("cuda")
+                    else:
+                        diarization_device = torch.device(self.device)
+                    
+                    self.diarization_pipeline = self.diarization_pipeline.to(diarization_device)
+                    print(f"[green]Loaded[/green] speaker diarization pipeline on device: {diarization_device}")
+                except Exception as device_error:
+                    print(f"[yellow]Warning[/yellow] Could not move diarization pipeline to {self.device}: {device_error}")
+                    print(f"[cyan]Info[/cyan] Diarization will run on default device (usually CPU)")
+                    if self.device == "cuda" and "CUDA" in str(device_error):
+                        print(f"[cyan]Tip[/cyan] Ensure PyTorch with CUDA support is installed: pip install torch --index-url https://download.pytorch.org/whl/cu121")
+                    print(f"[green]Loaded[/green] speaker diarization pipeline")
+                
+            except Exception as e:
+                print(f"[yellow]Warning[/yellow] Failed to load diarization pipeline: {e}")
+                print(f"[yellow]Tip[/yellow] You need to set HUGGINGFACE_TOKEN in your .env file")
+                print(f"[yellow]Tip[/yellow] Get your token from https://huggingface.co/settings/tokens")
+                self.enable_diarization = False
 
     def transcribe_audio_file(self, audio_file: Path) -> Path:
         """Transcribe a single audio file to JSON format.
@@ -141,13 +215,55 @@ class Transcriber:
             vad_filter=True,
             word_timestamps=False,
         )
+        
+        # Perform speaker diarization if enabled
+        speaker_mapping = {}
+        if self.enable_diarization and self.diarization_pipeline:
+            try:
+                print(f"[cyan]Running[/cyan] speaker diarization...")
+                diarization = self.diarization_pipeline(str(audio_file))
+                
+                # Build speaker mapping for each time segment
+                for turn, _, speaker in diarization.itertracks(yield_label=True):
+                    start_time = turn.start
+                    end_time = turn.end
+                    speaker_mapping[(start_time, end_time)] = speaker
+                
+                print(f"[green]Found[/green] {len(set(speaker_mapping.values()))} speakers")
+            except Exception as e:
+                print(f"[yellow]Warning[/yellow] Diarization failed: {e}")
+        
         data: Dict[str, Any] = {"video_id": video_id, "segments": []}
         for s in segments:
-            data["segments"].append({
+            segment_data = {
                 "text": s.text.strip(),
                 "start": float(s.start),
                 "end": float(s.end),
-            })
+            }
+            
+            # Assign speaker if diarization was performed
+            if speaker_mapping:
+                segment_start = float(s.start)
+                segment_end = float(s.end)
+                
+                # Find the speaker for this segment by checking overlap with diarization
+                assigned_speaker = None
+                max_overlap = 0
+                
+                for (dia_start, dia_end), speaker in speaker_mapping.items():
+                    # Calculate overlap between segment and diarization turn
+                    overlap_start = max(segment_start, dia_start)
+                    overlap_end = min(segment_end, dia_end)
+                    overlap = max(0, overlap_end - overlap_start)
+                    
+                    if overlap > max_overlap:
+                        max_overlap = overlap
+                        assigned_speaker = speaker
+                
+                if assigned_speaker:
+                    segment_data["speaker"] = assigned_speaker
+            
+            data["segments"].append(segment_data)
         out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"[green]Wrote[/green] {out_path}")
         return out_path

@@ -1,3 +1,9 @@
+# PyTorch with CUDA support (required for GPU acceleration of diarization)
+# Install these with: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu129
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
 yt-dlp
 faster-whisper
 chromadb
@@ -9,4 +15,5 @@ nvidia-cudnn-cu12
 nvidia-cublas-cu12
 nvidia-cuda-runtime-cu12
 openai
+pyannote.audio
 python-dotenv

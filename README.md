@@ -12,6 +12,11 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+**Note for GPU acceleration:** The requirements.txt includes PyTorch with CUDA 12.1 support for GPU-accelerated transcription and diarization. If you encounter CUDA compatibility issues or prefer CPU-only operation, you can install the CPU version:
+```
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+```
+
 2) Prepare URLs or playlists
 
 - Put one per line in `urls.txt` (video or playlist URLs are fine). Or use flags.
@@ -28,6 +33,9 @@ python main.py download --playlist-url https://www.youtube.com/playlist?list=PLA
 # Transcribe all downloaded audio files
 python main.py transcribe --model-size medium
 
+# Transcribe with speaker diarization (requires Hugging Face token in .env)
+python main.py transcribe --model-size medium --enable-diarization
+
 # Index transcripts
 python main.py index --embedding-model sentence-transformers/all-MiniLM-L6-v2
 
@@ -40,6 +48,7 @@ python main.py ask --question "What did they say about X?"
  - Create a `.env` at repo root (not committed) to store secrets like `OPENAI_API_KEY`.
  - Example keys:
    - `OPENAI_API_KEY=sk-...`
+   - `HUGGINGFACE_TOKEN=hf_...` (required for speaker diarization)
  - PowerShell helper to load `.env` into current session:
    ```powershell
    Get-Content .env | ForEach-Object {
@@ -48,6 +57,35 @@ python main.py ask --question "What did they say about X?"
    ```
 
 Citations include clickable timecodes like `https://youtu.be/VIDEO_ID?t=123`.
+
+### Speaker Diarization
+
+Speaker diarization identifies different speakers in audio and assigns speaker labels to transcript segments. This feature uses pyannote.audio and is optional.
+
+#### Setup:
+1. Get a Hugging Face token from https://huggingface.co/settings/tokens
+2. Accept the user agreement for the pyannote model at https://huggingface.co/pyannote/speaker-diarization-3.1
+3. Add `HUGGINGFACE_TOKEN=hf_your-token-here` to your `.env` file
+4. For GPU acceleration, ensure PyTorch with CUDA support is installed (included in requirements.txt)
+
+#### Usage:
+```bash
+# Enable diarization during transcription (uses HUGGINGFACE_TOKEN from .env)
+python main.py transcribe --enable-diarization
+```
+
+#### Output Format:
+With diarization enabled, transcript segments include an optional `speaker` field:
+```json
+{
+  "text": "Hello there",
+  "start": 1.23,
+  "end": 3.45,
+  "speaker": "SPEAKER_00"
+}
+```
+
+The speaker field is backward compatible - existing transcripts without speaker information continue to work normally.
 
 **See [Vector Database Management](#vector-database-management) below for detailed information on updating the database with new sessions.**
 
@@ -260,3 +298,5 @@ data/
 - For best quality, use `--model-size large-v3` (requires more RAM and time). `medium` is a good CPU default.
 - Re-runs skip already-downloaded audio and transcripts when possible.
 - Fully local: no API costs.
+- Speaker diarization adds processing time but provides speaker identification in multi-speaker recordings.
+- Diarization requires a Hugging Face token in your `.env` file and internet access during initial model download.
