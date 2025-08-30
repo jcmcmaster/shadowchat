@@ -23,6 +23,12 @@ from .utils import ensure_dir, get_video_id_from_audio
 
 
 class Transcriber:
+    """Transcribes audio files to text using the Whisper model via faster-whisper.
+    
+    Supports both basic transcription and advanced speaker diarization for identifying
+    different speakers in audio files.
+    """
+    
     def __init__(
         self,
         transcripts_dir: Path,
@@ -36,6 +42,22 @@ class Transcriber:
         enable_diarization: bool = False,
         diarization_token: Optional[str] = None,
     ) -> None:
+        """Initialize the transcriber with specified configuration.
+        
+        Args:
+            transcripts_dir: Directory where transcript JSON files will be saved.
+            model_size: Whisper model size to use (e.g., 'small.en', 'medium', 'large-v3').
+            device: Device to run transcription on ('cpu' or 'cuda').
+            compute_type: Override compute type (e.g., 'int8', 'float16'). 
+                         If None, defaults to 'int8' for CPU, 'float16' for CUDA.
+            beam_size: Decoding beam size (1 is fastest).
+            overwrite: Whether to re-generate transcripts even if they exist.
+            archive_existing: Whether to archive old transcripts when overwriting.
+            archive_subdir: Subdirectory name for archived transcripts.
+            enable_diarization: Whether to enable speaker diarization.
+            diarization_token: Hugging Face token for diarization model access.
+                              If None, will use HUGGINGFACE_TOKEN environment variable.
+        """
         self.transcripts_dir = transcripts_dir
         ensure_dir(self.transcripts_dir)
         self.model_size = model_size
@@ -46,6 +68,7 @@ class Transcriber:
         self.archive_subdir = archive_subdir
         self.enable_diarization = enable_diarization
         self.diarization_token = diarization_token
+        
         # On Windows + CUDA, ensure CUDA/cuDNN DLLs are discoverable
         if os.name == "nt" and self.device == "cuda":
             def _add_dir(path: Path) -> None:
@@ -88,6 +111,7 @@ class Transcriber:
 
             for ns in ("nvidia.cudnn", "nvidia.cublas", "nvidia.cuda_runtime"):
                 _add_from_namespace(ns)
+                
         if compute_type is None:
             self.compute_type = "int8" if device == "cpu" else "float16"
         else:
@@ -118,14 +142,6 @@ class Transcriber:
                     "pyannote/speaker-diarization-3.1",
                     use_auth_token=token
                 )
-                # Configure device for diarization pipeline to match transcription device
-
-                    self.diarization_pipeline = Pipeline.from_pretrained(
-
-                        "pyannote/speaker-diarization-3.1"
-
-                    )
-
                 
                 # Configure device for diarization pipeline to match transcription device
                 try:
@@ -163,6 +179,14 @@ class Transcriber:
                 self.enable_diarization = False
 
     def transcribe_audio_file(self, audio_file: Path) -> Path:
+        """Transcribe a single audio file to JSON format.
+        
+        Args:
+            audio_file: Path to the MP3 audio file to transcribe.
+            
+        Returns:
+            Path to the generated transcript JSON file.
+        """
         video_id = get_video_id_from_audio(audio_file)
         out_path = self.transcripts_dir / f"{video_id}.json"
         if out_path.exists():
@@ -197,9 +221,7 @@ class Transcriber:
         if self.enable_diarization and self.diarization_pipeline:
             try:
                 print(f"[cyan]Running[/cyan] speaker diarization...")
-
                 diarization = self.diarization_pipeline(str(audio_file))
-
                 
                 # Build speaker mapping for each time segment
                 for turn, _, speaker in diarization.itertracks(yield_label=True):
@@ -247,6 +269,14 @@ class Transcriber:
         return out_path
 
     def transcribe_many(self, audio_dir: Path) -> List[Path]:
+        """Transcribe all MP3 files in a directory.
+        
+        Args:
+            audio_dir: Directory containing MP3 audio files to transcribe.
+            
+        Returns:
+            List of paths to generated transcript JSON files.
+        """
         audio_files = sorted(audio_dir.glob("*.mp3"))
         if not audio_files:
             print("[yellow]No audio files found[/yellow]")

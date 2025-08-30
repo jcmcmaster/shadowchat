@@ -21,6 +21,11 @@ INDEX_DIR = DATA_DIR / "index"
 
 
 def cmd_download(args: argparse.Namespace) -> None:
+    """Download audio from YouTube URLs and playlists.
+    
+    Args:
+        args: Parsed command line arguments containing URL sources and options.
+    """
     urls: List[str] = []
     # individual URLs
     if args.url:
@@ -40,6 +45,11 @@ def cmd_download(args: argparse.Namespace) -> None:
 
 
 def cmd_transcribe(args: argparse.Namespace) -> None:
+    """Transcribe downloaded audio files to text using Whisper.
+    
+    Args:
+        args: Parsed command line arguments containing transcription options.
+    """
     tr = Transcriber(
         TRANSCRIPTS_DIR,
         model_size=args.model_size,
@@ -56,6 +66,11 @@ def cmd_transcribe(args: argparse.Namespace) -> None:
 
 
 def cmd_index(args: argparse.Namespace) -> None:
+    """Index transcript chunks into a vector database for semantic search.
+    
+    Args:
+        args: Parsed command line arguments containing indexing options.
+    """
     indexer = Indexer(
         INDEX_DIR,
         collection_name=args.collection,
@@ -65,6 +80,11 @@ def cmd_index(args: argparse.Namespace) -> None:
 
 
 def cmd_ask(args: argparse.Namespace) -> None:
+    """Ask a question and display relevant transcript excerpts.
+    
+    Args:
+        args: Parsed command line arguments containing the question and search options.
+    """
     qa = QAClient(
         INDEX_DIR,
         collection_name=args.collection,
@@ -74,6 +94,11 @@ def cmd_ask(args: argparse.Namespace) -> None:
 
 
 def cmd_chat(args: argparse.Namespace) -> None:
+    """Start an interactive chat session for asking questions about transcripts.
+    
+    Args:
+        args: Parsed command line arguments containing chat options and LLM settings.
+    """
     qa = QAClient(
         INDEX_DIR,
         collection_name=args.collection,
@@ -97,6 +122,11 @@ def cmd_chat(args: argparse.Namespace) -> None:
 
 
 def cmd_stats(args: argparse.Namespace) -> None:
+    """Display statistics about available transcripts and sessions.
+    
+    Args:
+        args: Parsed command line arguments (unused for this command).
+    """
     # Enumerate sessions from transcripts/audio info
     entries = []
     for p in TRANSCRIPTS_DIR.glob("*.json"):
@@ -124,6 +154,11 @@ def cmd_stats(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build and configure the command line argument parser.
+    
+    Returns:
+        Configured ArgumentParser with all subcommands and options.
+    """
     p = argparse.ArgumentParser(description="YouTube audio QA (local)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -190,6 +225,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Main entry point for the YouTube audio QA application.
+    
+    Loads environment variables, ensures required directories exist,
+    parses command line arguments, and executes the appropriate command.
+    """
     # Load environment variables from .env file
     load_dotenv()
     

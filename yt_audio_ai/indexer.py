@@ -14,6 +14,15 @@ from .utils import ensure_dir, read_info_json
 
 
 def _default_chunker(segments: List[Dict[str, Any]], max_chars: int = 1500) -> List[List[Dict[str, Any]]]:
+    """Split transcript segments into chunks based on character count.
+    
+    Args:
+        segments: List of transcript segments, each with 'text', 'start', and 'end' keys.
+        max_chars: Maximum number of characters per chunk.
+        
+    Returns:
+        List of chunks, where each chunk is a list of segments.
+    """
     chunks: List[List[Dict[str, Any]]] = []
     current: List[Dict[str, Any]] = []
     total_len = 0
@@ -33,19 +42,50 @@ def _default_chunker(segments: List[Dict[str, Any]], max_chars: int = 1500) -> L
 
 
 def _chunk_to_text(chunk: List[Dict[str, Any]]) -> str:
+    """Convert a chunk of segments to a single text string.
+    
+    Args:
+        chunk: List of transcript segments with 'text' keys.
+        
+    Returns:
+        Concatenated text from all segments in the chunk.
+    """
     return " ".join(seg.get("text", "").strip() for seg in chunk).strip()
 
 
 def _chunk_bounds(chunk: List[Dict[str, Any]]) -> Tuple[float, float]:
+    """Get the start and end timestamps for a chunk of segments.
+    
+    Args:
+        chunk: List of transcript segments with 'start' and 'end' keys.
+        
+    Returns:
+        Tuple of (start_time, end_time) for the chunk.
+    """
     return float(chunk[0]["start"]), float(chunk[-1]["end"])
 
 
 class SentenceTransformerEmbedding(EmbeddingFunction):
+    """ChromaDB embedding function using SentenceTransformers."""
+    
     def __init__(self, model_name: str) -> None:
+        """Initialize with a specific SentenceTransformer model.
+        
+        Args:
+            model_name: Name of the SentenceTransformer model to use.
+        """
         self.model_name = model_name
         self.model = SentenceTransformer(model_name)
 
     def __call__(self, texts: List[str]) -> List[List[float]]:  # type: ignore[override]
+        """Generate embeddings for a list of texts.
+        
+        Args:
+            texts: List of text strings to embed.
+            
+        Returns:
+            List of embedding vectors as lists of floats.
+        """
         vecs = self.model.encode(texts, normalize_embeddings=True)
         return [v.tolist() for v in vecs]
 
@@ -53,12 +93,21 @@ class SentenceTransformerEmbedding(EmbeddingFunction):
 
 
 class Indexer:
+    """Indexes transcript chunks into a ChromaDB vector database for semantic search."""
+    
     def __init__(
         self,
         index_dir: Path,
         collection_name: str = "youtube_audio",
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
     ) -> None:
+        """Initialize the indexer with a ChromaDB collection.
+        
+        Args:
+            index_dir: Directory for the persistent ChromaDB storage.
+            collection_name: Name of the ChromaDB collection to use.
+            embedding_model: SentenceTransformer model name for embeddings.
+        """
         ensure_dir(index_dir)
         self.client = chromadb.PersistentClient(path=str(index_dir))
         self.collection = self.client.get_or_create_collection(
@@ -68,6 +117,15 @@ class Indexer:
         )
 
     def index_transcript(self, transcript_path: Path, audio_dir: Path) -> int:
+        """Index a single transcript file into the vector database.
+        
+        Args:
+            transcript_path: Path to the transcript JSON file.
+            audio_dir: Directory containing the corresponding audio files and metadata.
+            
+        Returns:
+            Number of chunks indexed from this transcript.
+        """
         data = json.loads(transcript_path.read_text(encoding="utf-8"))
         video_id = data.get("video_id")
         segments = data.get("segments", [])
@@ -128,6 +186,15 @@ class Indexer:
         return len(ids)
 
     def index_many(self, transcripts_dir: Path, audio_dir: Path) -> int:
+        """Index all transcript files in a directory.
+        
+        Args:
+            transcripts_dir: Directory containing transcript JSON files.
+            audio_dir: Directory containing corresponding audio files and metadata.
+            
+        Returns:
+            Total number of chunks indexed across all transcripts.
+        """
         total = 0
         for p in sorted(transcripts_dir.glob("*.json")):
             try:
