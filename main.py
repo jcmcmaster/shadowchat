@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 from typing import List
 
@@ -14,10 +15,26 @@ from yt_audio_ai.utils import read_info_json
 from yt_audio_ai.utils import ensure_dir
 
 
+def get_transcripts_dir() -> Path:
+    """Get the transcripts directory path, potentially versioned based on configuration.
+    
+    Returns:
+        Path to transcripts directory, which may include a version subdirectory
+        if TRANSCRIPT_VERSION environment variable is set.
+    """
+    data_dir = Path("data")
+    transcript_version = os.getenv("TRANSCRIPT_VERSION")
+    if transcript_version:
+        return data_dir / "transcripts" / transcript_version
+    return data_dir / "transcripts"
+
+
 DATA_DIR = Path("data")
 AUDIO_DIR = DATA_DIR / "audio"
-TRANSCRIPTS_DIR = DATA_DIR / "transcripts"
 INDEX_DIR = DATA_DIR / "index"
+
+# TRANSCRIPTS_DIR will be set in main() after loading environment variables
+TRANSCRIPTS_DIR: Path
 
 
 def cmd_download(args: argparse.Namespace) -> None:
@@ -159,7 +176,9 @@ def build_parser() -> argparse.ArgumentParser:
     Returns:
         Configured ArgumentParser with all subcommands and options.
     """
-    p = argparse.ArgumentParser(description="YouTube audio QA (local)")
+    p = argparse.ArgumentParser(
+        description="YouTube audio QA (local). Set TRANSCRIPT_VERSION env var to organize transcripts in versioned subdirectories."
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("download", help="Download audio for URLs or playlists")
@@ -230,8 +249,13 @@ def main() -> None:
     Loads environment variables, ensures required directories exist,
     parses command line arguments, and executes the appropriate command.
     """
+    global TRANSCRIPTS_DIR
+    
     # Load environment variables from .env file
     load_dotenv()
+    
+    # Set TRANSCRIPTS_DIR after loading environment variables
+    TRANSCRIPTS_DIR = get_transcripts_dir()
     
     ensure_dir(DATA_DIR)
     ensure_dir(AUDIO_DIR)
