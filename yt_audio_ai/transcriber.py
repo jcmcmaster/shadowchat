@@ -288,3 +288,39 @@ class Transcriber:
             except Exception as e:
                 print(f"[red]Failed[/red] {f}: {e}")
         return results
+
+    def transcribe_specific(self, audio_files: List[Path]) -> List[Path]:
+        """Transcribe specific audio files.
+        
+        Args:
+            audio_files: List of specific audio file paths to transcribe.
+            
+        Returns:
+            List of paths to generated transcript JSON files.
+        """
+        if not audio_files:
+            print("[yellow]No audio files specified[/yellow]")
+            return []
+        
+        # Filter to only existing files and ensure they're MP3s
+        valid_files = []
+        for f in audio_files:
+            if not f.exists():
+                print(f"[yellow]Warning[/yellow] File not found: {f}")
+                continue
+            if f.suffix.lower() != '.mp3':
+                print(f"[yellow]Warning[/yellow] Not an MP3 file, skipping: {f}")
+                continue
+            valid_files.append(f)
+        
+        if not valid_files:
+            print("[yellow]No valid audio files to transcribe[/yellow]")
+            return []
+            
+        results: List[Path] = []
+        for f in tqdm(valid_files, desc="Transcribing specific files"):
+            try:
+                results.append(self.transcribe_audio_file(f))
+            except Exception as e:
+                print(f"[red]Failed[/red] {f}: {e}")
+        return results
