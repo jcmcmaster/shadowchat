@@ -11,9 +11,6 @@ import os
 import sys
 import warnings
 
-# Suppress all warnings
-warnings.filterwarnings("ignore")
-
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     # Only for type hints; actual import happens after DLL paths are set
@@ -28,6 +25,9 @@ class Transcriber:
     Supports both basic transcription and advanced speaker diarization for identifying
     different speakers in audio files.
     """
+    
+    # Default CUDA version for PyTorch installation instructions
+    DEFAULT_CUDA_VERSION = os.getenv('PYTORCH_CUDA_VERSION', 'cu121')
     
     def __init__(
         self,
@@ -137,6 +137,11 @@ class Transcriber:
                     print(f"[yellow]Tip[/yellow] Get your token from https://huggingface.co/settings/tokens")
                     self.enable_diarization = False
                     return
+                
+                # Validate token format
+                if not token.startswith('hf_'):
+                    print(f"[yellow]Warning[/yellow] Hugging Face token should start with 'hf_' - token format may be invalid")
+                    print(f"[yellow]Tip[/yellow] Verify your token at https://huggingface.co/settings/tokens")
 
                 self.diarization_pipeline = Pipeline.from_pretrained(
                     "pyannote/speaker-diarization-3.1",
@@ -150,7 +155,7 @@ class Transcriber:
                         # First check if PyTorch was compiled with CUDA support
                         if torch.version.cuda is None:
                             print(f"[yellow]Warning[/yellow] PyTorch not compiled with CUDA support")
-                            print(f"[cyan]Info[/cyan] Install PyTorch with CUDA: pip install torch --index-url https://download.pytorch.org/whl/cu121")
+                            print(f"[cyan]Info[/cyan] Install PyTorch with CUDA: pip install torch --index-url https://download.pytorch.org/whl/{self.DEFAULT_CUDA_VERSION}")
                             diarization_device = torch.device("cpu")
                         elif not torch.cuda.is_available():
                             # PyTorch has CUDA support but no CUDA devices are available
@@ -169,7 +174,7 @@ class Transcriber:
                     print(f"[yellow]Warning[/yellow] Could not move diarization pipeline to {self.device}: {device_error}")
                     print(f"[cyan]Info[/cyan] Diarization will run on default device (usually CPU)")
                     if self.device == "cuda" and "CUDA" in str(device_error):
-                        print(f"[cyan]Tip[/cyan] Ensure PyTorch with CUDA support is installed: pip install torch --index-url https://download.pytorch.org/whl/cu121")
+                        print(f"[cyan]Tip[/cyan] Ensure PyTorch with CUDA support is installed: pip install torch --index-url https://download.pytorch.org/whl/{self.DEFAULT_CUDA_VERSION}")
                     print(f"[green]Loaded[/green] speaker diarization pipeline")
                 
             except Exception as e:
