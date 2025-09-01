@@ -62,7 +62,37 @@ def cmd_transcribe(args: argparse.Namespace) -> None:
         enable_diarization=args.enable_diarization,
         diarization_token=args.diarization_token,
     )
-    tr.transcribe_many(AUDIO_DIR)
+    
+    # Collect specific files to transcribe if specified
+    specific_files = []
+    use_specific_mode = False
+    
+    # Add files specified by video ID
+    if hasattr(args, 'video_id') and args.video_id:
+        use_specific_mode = True
+        for vid in args.video_id:
+            audio_file = AUDIO_DIR / f"{vid}.mp3"
+            if audio_file.exists():
+                specific_files.append(audio_file)
+            else:
+                print(f"[yellow]Warning[/yellow] Audio file not found for video ID '{vid}': {audio_file}")
+    
+    # Add files specified by direct audio file path
+    if hasattr(args, 'audio_file') and args.audio_file:
+        use_specific_mode = True
+        for audio_path in args.audio_file:
+            audio_file = Path(audio_path)
+            if audio_file.exists():
+                specific_files.append(audio_file)
+            else:
+                print(f"[yellow]Warning[/yellow] Audio file not found: {audio_file}")
+    
+    # If specific mode was requested (even if no valid files found), use transcribe_specific
+    # Otherwise, transcribe all files in the directory
+    if use_specific_mode:
+        tr.transcribe_specific(specific_files)
+    else:
+        tr.transcribe_many(AUDIO_DIR)
 
 
 def cmd_index(args: argparse.Namespace) -> None:
@@ -183,6 +213,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--archive-subdir", default="old", help="Subdirectory under transcripts to place archived files")
     sp.add_argument("--enable-diarization", action="store_true", help="Enable speaker diarization using pyannote")
     sp.add_argument("--diarization-token", default=None, help="Hugging Face token for pyannote models (optional, prefers HUGGINGFACE_TOKEN env var)")
+    sp.add_argument("--video-id", action="append", help="Specific video ID to transcribe (repeatable). If not provided, transcribes all audio files.")
+    sp.add_argument("--audio-file", action="append", help="Specific audio file path to transcribe (repeatable). If not provided, transcribes all audio files.")
     sp.set_defaults(func=cmd_transcribe)
 
     sp = sub.add_parser("index", help="Chunk, embed, and index transcripts")

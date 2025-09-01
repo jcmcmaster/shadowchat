@@ -33,6 +33,12 @@ python main.py download --playlist-url https://www.youtube.com/playlist?list=PLA
 # Transcribe all downloaded audio files
 python main.py transcribe --model-size medium
 
+# Transcribe specific videos by ID
+python main.py transcribe --video-id VIDEO_ID1 --video-id VIDEO_ID2
+
+# Transcribe specific audio files by path
+python main.py transcribe --audio-file path/to/audio1.mp3 --audio-file path/to/audio2.mp3
+
 # Transcribe with speaker diarization (requires Hugging Face token in .env)
 python main.py transcribe --model-size medium --enable-diarization
 
@@ -165,6 +171,18 @@ python main.py download --playlist-url "https://youtube.com/playlist?list=PLxxxx
 python main.py transcribe
 python main.py index  # Only new videos get indexed
 python main.py ask --question "What topics were covered?"
+```
+
+**Example 4: Transcribing specific videos**
+```bash
+# Re-transcribe specific videos with better model or settings
+python main.py transcribe --video-id abc123 --video-id def456 --model-size large-v3
+
+# Transcribe specific audio files by path
+python main.py transcribe --audio-file data/audio/video1.mp3 --overwrite
+
+# Combine video IDs and file paths
+python main.py transcribe --video-id abc123 --audio-file data/audio/special.mp3 --model-size medium
 ```
 
 #### Database Update Process

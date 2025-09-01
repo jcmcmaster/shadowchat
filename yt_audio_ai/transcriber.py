@@ -11,9 +11,6 @@ import os
 import sys
 import warnings
 
-# Suppress all warnings
-warnings.filterwarnings("ignore")
-
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     # Only for type hints; actual import happens after DLL paths are set
@@ -28,6 +25,9 @@ class Transcriber:
     Supports both basic transcription and advanced speaker diarization for identifying
     different speakers in audio files.
     """
+    
+    # Default CUDA version for PyTorch installation instructions
+    DEFAULT_CUDA_VERSION = os.getenv('PYTORCH_CUDA_VERSION', 'cu121')
     
     def __init__(
         self,
@@ -137,6 +137,11 @@ class Transcriber:
                     print(f"[yellow]Tip[/yellow] Get your token from https://huggingface.co/settings/tokens")
                     self.enable_diarization = False
                     return
+                
+                # Validate token format
+                if not token.startswith('hf_'):
+                    print(f"[yellow]Warning[/yellow] Hugging Face token should start with 'hf_' - token format may be invalid")
+                    print(f"[yellow]Tip[/yellow] Verify your token at https://huggingface.co/settings/tokens")
 
                 self.diarization_pipeline = Pipeline.from_pretrained(
                     "pyannote/speaker-diarization-3.1",
@@ -150,7 +155,7 @@ class Transcriber:
                         # First check if PyTorch was compiled with CUDA support
                         if torch.version.cuda is None:
                             print(f"[yellow]Warning[/yellow] PyTorch not compiled with CUDA support")
-                            print(f"[cyan]Info[/cyan] Install PyTorch with CUDA: pip install torch --index-url https://download.pytorch.org/whl/cu121")
+                            print(f"[cyan]Info[/cyan] Install PyTorch with CUDA: pip install torch --index-url https://download.pytorch.org/whl/{self.DEFAULT_CUDA_VERSION}")
                             diarization_device = torch.device("cpu")
                         elif not torch.cuda.is_available():
                             # PyTorch has CUDA support but no CUDA devices are available
@@ -169,7 +174,7 @@ class Transcriber:
                     print(f"[yellow]Warning[/yellow] Could not move diarization pipeline to {self.device}: {device_error}")
                     print(f"[cyan]Info[/cyan] Diarization will run on default device (usually CPU)")
                     if self.device == "cuda" and "CUDA" in str(device_error):
-                        print(f"[cyan]Tip[/cyan] Ensure PyTorch with CUDA support is installed: pip install torch --index-url https://download.pytorch.org/whl/cu121")
+                        print(f"[cyan]Tip[/cyan] Ensure PyTorch with CUDA support is installed: pip install torch --index-url https://download.pytorch.org/whl/{self.DEFAULT_CUDA_VERSION}")
                     print(f"[green]Loaded[/green] speaker diarization pipeline")
                 
             except Exception as e:
@@ -283,6 +288,42 @@ class Transcriber:
             return []
         results: List[Path] = []
         for f in tqdm(audio_files, desc="Transcribing"):
+            try:
+                results.append(self.transcribe_audio_file(f))
+            except Exception as e:
+                print(f"[red]Failed[/red] {f}: {e}")
+        return results
+
+    def transcribe_specific(self, audio_files: List[Path]) -> List[Path]:
+        """Transcribe specific audio files.
+        
+        Args:
+            audio_files: List of specific audio file paths to transcribe.
+            
+        Returns:
+            List of paths to generated transcript JSON files.
+        """
+        if not audio_files:
+            print("[yellow]No audio files specified[/yellow]")
+            return []
+        
+        # Filter to only existing files and ensure they're MP3s
+        valid_files = []
+        for f in audio_files:
+            if not f.exists():
+                print(f"[yellow]Warning[/yellow] File not found: {f}")
+                continue
+            if f.suffix.lower() != '.mp3':
+                print(f"[yellow]Warning[/yellow] Not an MP3 file, skipping: {f}")
+                continue
+            valid_files.append(f)
+        
+        if not valid_files:
+            print("[yellow]No valid audio files to transcribe[/yellow]")
+            return []
+            
+        results: List[Path] = []
+        for f in tqdm(valid_files, desc="Transcribing specific files"):
             try:
                 results.append(self.transcribe_audio_file(f))
             except Exception as e:
