@@ -49,12 +49,48 @@ python main.py ask --question "What did they say about X?"
  - Example keys:
    - `OPENAI_API_KEY=sk-...`
    - `HUGGINGFACE_TOKEN=hf_...` (required for speaker diarization)
+   - `TRANSCRIPT_VERSION=v1.0.0` (optional, organizes transcripts in versioned subdirectories)
  - PowerShell helper to load `.env` into current session:
    ```powershell
    Get-Content .env | ForEach-Object {
      if (-not ($_ -match '^(\s*#|\s*$)')) { $k,$v = $_.Split('=',2); [Environment]::SetEnvironmentVariable($k,$v,'Process') }
    }
    ```
+
+### Transcript Versioning
+
+The system supports organizing transcripts into versioned subdirectories using the `TRANSCRIPT_VERSION` environment variable. This is useful for managing different transcript formats, model versions, or experimental setups.
+
+#### Configuration:
+```bash
+# In your .env file or environment
+TRANSCRIPT_VERSION=v1.0.0
+```
+
+#### Behavior:
+- **Without version**: Transcripts stored in `data/transcripts/`
+- **With version**: Transcripts stored in `data/transcripts/{version}/` (e.g., `data/transcripts/v1.0.0/`)
+- **Multiple versions**: Different versions can coexist in separate subdirectories
+
+#### Examples:
+```bash
+# Default behavior (no versioning)
+python main.py transcribe --model-size medium
+
+# Version v1.0.0 - transcripts go to data/transcripts/v1.0.0/
+TRANSCRIPT_VERSION=v1.0.0 python main.py transcribe --model-size medium
+
+# Version v2.0.0-beta - transcripts go to data/transcripts/v2.0.0-beta/
+TRANSCRIPT_VERSION=v2.0.0-beta python main.py transcribe --model-size large-v3
+```
+
+#### Use Cases:
+- **Model comparisons**: Store transcripts from different Whisper models in separate versions
+- **Experimental setups**: Test different transcription parameters without overwriting existing transcripts
+- **Production vs development**: Maintain separate transcript sets for different environments
+- **Quality improvements**: Keep historical transcripts while upgrading to better models
+
+**Note**: The indexing and query commands automatically use the same versioned transcript directory. Make sure to set the same `TRANSCRIPT_VERSION` when indexing and querying transcripts.
 
 Citations include clickable timecodes like `https://youtu.be/VIDEO_ID?t=123`.
 
@@ -92,7 +128,7 @@ The speaker field is backward compatible - existing transcripts without speaker 
 ### Data layout
 
 - `data/audio/{id}.mp3` and `data/audio/{id}.info.json`
-- `data/transcripts/{id}.json`
+- `data/transcripts/{id}.json` (default) or `data/transcripts/{version}/{id}.json` (when `TRANSCRIPT_VERSION` is set)
 - `data/index/` (Chroma persistent store)
 
 ### Vector Database Management
