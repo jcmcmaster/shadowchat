@@ -5,3 +5,69 @@ __pycache__/
 data/
 urls.txt
 
+# ---- .NET / C# standard ignores ----
+# Build results
+[Bb]in/
+[Oo]bj/
+[Bb]uild/
+[Oo]ut/
+artifacts/
+
+# VS / IDE metadata
+.vs/
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# NuGet
+*.nupkg
+# Ignore packages folder except build files if present
+**/packages/*
+!**/packages/build/
+!**/packages/repositories.config
+.nuget/
+
+# Paket
+.paket/
+paket-files/
+
+# Logs & diagnostics
+*.log
+
+# Coverage
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage-results/
+TestResults/
+
+# Publishing
+*.pubxml
+*.publishsettings
+*.azurePubxml
+
+# Lock / restore artifacts
+project.lock.json
+project.assets.json
+global.json
+
+# Local tools & caches
+.dotnet/
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS junk
+Thumbs.db
+.DS_Store
+
+# End of .NET section
