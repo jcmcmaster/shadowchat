@@ -121,6 +121,57 @@ def cmd_chat(args: argparse.Namespace) -> None:
             qa.ask(q, top_k=args.top_k)
 
 
+def cmd_sync(args: argparse.Namespace) -> None:
+    """Sync command: downloads from urls.txt, transcribes with defaults, and rebuilds index.
+    
+    Args:
+        args: Parsed command line arguments (unused for this command).
+    """
+    urls_file = Path("urls.txt")
+    if not urls_file.exists():
+        print(f"Error: {urls_file} not found. Please create this file with one URL per line.")
+        return
+    
+    print(f"[cyan]Starting sync process...[/cyan]")
+    
+    # Step 1: Download from urls.txt
+    print(f"[cyan]Step 1: Downloading from {urls_file}...[/cyan]")
+    urls = [l.strip() for l in urls_file.read_text(encoding="utf-8").splitlines() if l.strip()]
+    if not urls:
+        print(f"Warning: {urls_file} is empty. Nothing to download.")
+        return
+    
+    dl = YouTubeAudioDownloader(AUDIO_DIR)
+    dl.download_many(urls)
+    
+    # Step 2: Transcribe with default settings
+    print(f"[cyan]Step 2: Transcribing with default settings...[/cyan]")
+    tr = Transcriber(
+        TRANSCRIPTS_DIR,
+        model_size="small.en",  # Default model size as specified in transcribe command
+        device="cpu",           # Default device
+        compute_type=None,      # Default compute type
+        beam_size=1,            # Default beam size
+        overwrite=False,        # Default overwrite
+        archive_existing=False, # Default archive setting
+        archive_subdir="old",   # Default archive subdir
+        enable_diarization=False, # Default diarization setting
+        diarization_token=None,   # Default diarization token
+    )
+    tr.transcribe_many(AUDIO_DIR)
+    
+    # Step 3: Rebuild index with default settings
+    print(f"[cyan]Step 3: Rebuilding index...[/cyan]")
+    indexer = Indexer(
+        INDEX_DIR,
+        collection_name="youtube_audio",  # Default collection name
+        embedding_model="sentence-transformers/all-MiniLM-L6-v2",  # Default embedding model
+    )
+    indexer.index_many(TRANSCRIPTS_DIR, AUDIO_DIR)
+    
+    print(f"[green]Sync completed successfully![/green]")
+
+
 def cmd_stats(args: argparse.Namespace) -> None:
     """Display statistics about available transcripts and sessions.
     
@@ -220,6 +271,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("stats", help="Show session count and titles from transcripts")
     sp.set_defaults(func=cmd_stats)
+
+    sp = sub.add_parser("sync", help="Download from urls.txt, transcribe with defaults, and rebuild index")
+    sp.set_defaults(func=cmd_sync)
 
     return p
 
